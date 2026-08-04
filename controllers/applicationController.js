@@ -4,11 +4,35 @@ import Application from '../models/Application.js';
 // @route   POST /api/applications
 // @access  Public
 export const createApplication = async (req, res, next) => {
-  const { serviceType, formData, phone } = req.body;
-
+  // When using multipart/form-data, multer places uploaded files in req.files
+  // and other fields as strings in req.body. Expect `formData` to be a
+  // JSON-stringified payload in req.body.formData.
   try {
+    const serviceType = req.body.serviceType;
+    const phone = req.body.phone;
+
+    let formData = req.body.formData;
+    if (typeof formData === 'string') {
+      try {
+        formData = JSON.parse(formData);
+      } catch (err) {
+        formData = {};
+      }
+    }
+
+    // Attach uploaded file paths (if any) into formData.uploads
+    formData.uploads = formData.uploads || {};
+    if (req.files) {
+      Object.keys(req.files).forEach((key) => {
+        const arr = req.files[key];
+        if (arr && arr.length > 0) {
+          formData.uploads[key] = arr.map((f) => ({ filename: f.filename, path: f.path }));
+        }
+      });
+    }
+
     // Extract NIC from formData (checking common keys)
-    const nic = formData?.nic || formData?.NIC;
+    const nic = formData?.nic || formData?.NIC || formData?.nationalId;
 
     if (!nic) {
       res.status(400);
@@ -21,6 +45,37 @@ export const createApplication = async (req, res, next) => {
     if (!verifiedPhone) {
       res.status(400);
       return next(new Error('Verified phone number is required'));
+    }
+
+    // Service-specific validations
+    if (serviceType === 'relocation') {
+      const addrPresent = Boolean(
+        formData?.address1 || formData?.newAddress || formData?.newAddressLine1 || formData?.addressLine1 || formData?.district
+      );
+
+      if (!addrPresent) {
+        res.status(400);
+        return next(new Error('New service address is required for relocation'));
+      }
+
+      // Ensure proofOfAddress file was uploaded
+      const proofFiles = formData.uploads?.proofOfAddress || req.files?.proofOfAddress;
+      if (!proofFiles || (Array.isArray(proofFiles) && proofFiles.length === 0)) {
+        res.status(400);
+        return next(new Error('Proof of address document is required for relocation'));
+      }
+
+      // Conditional validation: nearest SLT numbers required for FTTH/Megaline
+      const selectedServiceType = (formData?.serviceType || formData?.selectedServiceType || '').toString().toLowerCase();
+      if (['ftth', 'megaline'].includes(selectedServiceType)) {
+        const s1 = formData?.sltNumber1 || formData?.nearestSlt1;
+        const s2 = formData?.sltNumber2 || formData?.nearestSlt2;
+        const validPhone = (v) => typeof v === 'string' && /^\d{10}$/.test(v.replace(/\D/g, ''));
+        if (!validPhone(s1) || !validPhone(s2)) {
+          res.status(400);
+          return next(new Error('Two nearest SLT telephone numbers are required for FTTH/Megaline services and must be 10 digits'));
+        }
+      }
     }
 
     const application = await Application.create({

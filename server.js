@@ -19,6 +19,14 @@ connectDB();
 
 const app = express();
 
+// Ensure uploads directory exists for file uploads
+import fs from 'fs';
+import path from 'path';
+const uploadsDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
 // Security Middlewares
 app.use(helmet());
 app.use(cors());

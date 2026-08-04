@@ -31,9 +31,7 @@ export const validateApplicationSubmission = [
     .withMessage('Invalid service type'),
   body('formData')
     .notEmpty()
-    .withMessage('Form data is required')
-    .isObject()
-    .withMessage('Form data must be an object'),
+    .withMessage('Form data is required'),
   validateRequest,
 ];
 
