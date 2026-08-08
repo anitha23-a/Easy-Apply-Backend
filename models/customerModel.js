@@ -3,9 +3,14 @@ import pool from '../config/mysql.js';
 const allowedServiceTypes = ['FTTH', 'LTE', 'Megaline', 'PEO TV'];
 
 export const getCustomerByTelephone = async (telephone) => {
-  const sql = `SELECT telephone_number AS telephoneNumber, legal_owner AS legalOwner, contact_person AS contactPerson, telephone, mobile, email, service_type AS serviceType FROM customers WHERE telephone_number = ? LIMIT 1`;
-  const [rows] = await pool.execute(sql, [telephone]);
-  return rows[0] || null;
+  if (!pool) return null;
+  try {
+    const sql = `SELECT telephone_number AS telephoneNumber, legal_owner AS legalOwner, contact_person AS contactPerson, telephone, mobile, email, service_type AS serviceType FROM customers WHERE telephone_number = ? OR telephone = ? LIMIT 1`;
+    const [rows] = await pool.execute(sql, [telephone, telephone]);
+    return rows[0] || null;
+  } catch (err) {
+    return null;
+  }
 };
 
 export const updateCustomerByTelephone = async (telephone, updates) => {

@@ -1,14 +1,41 @@
 import Customer from '../models/Customer.js';
+import { getCustomerByTelephone as getCustomerFromSql } from '../models/customerModel.js';
 
 export const findCustomerByTelephone = async (telephone) => {
-  const customer = await Customer.findOne({ telephone }).lean();
+  let customer = await Customer.findOne({ telephone }).lean();
+
+  if (!customer) {
+    try {
+      const sqlCustomer = await getCustomerFromSql(telephone);
+      if (sqlCustomer) {
+        customer = sqlCustomer;
+      }
+    } catch (err) {
+      // Ignore SQL query failure if MySQL server is not running
+    }
+  }
+
   if (customer) {
+    // Map schema variations (e.g., fullName -> legalOwner/contactPerson, contactNo -> mobile, addressLine1 -> address1)
+    const ownerName = customer.fullName || customer.legalOwner || customer.name || '';
+    const contact = customer.contactPerson || customer.fullName || ownerName;
+    const mobileNum = customer.contactNo || customer.mobile || customer.phone || '';
+    const addr1 = customer.addressLine1 || customer.address1 || '';
+    const addr2 = customer.addressLine2 || customer.address2 || '';
+
+    customer.legalOwner = ownerName;
+    customer.contactPerson = contact;
+    customer.mobile = mobileNum;
+    customer.serviceType = customer.serviceType || 'FTTH';
+    customer.address1 = addr1;
+    customer.address2 = addr2;
+
     customer.currentAddress = {
-      address1: customer.address1 || '',
-      address2: customer.address2 || '',
+      address1: addr1,
+      address2: addr2,
       city: customer.city || '',
       district: customer.district || '',
-      postalCode: customer.postal_code || '',
+      postalCode: customer.postal_code || customer.postalCode || '',
     };
   }
   return customer;
