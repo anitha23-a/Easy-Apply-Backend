@@ -58,22 +58,16 @@ export const createApplication = async (req, res, next) => {
         return next(new Error('New service address is required for relocation'));
       }
 
-      // Ensure proofOfAddress file was uploaded
-      const proofFiles = formData.uploads?.proofOfAddress || req.files?.proofOfAddress;
-      if (!proofFiles || (Array.isArray(proofFiles) && proofFiles.length === 0)) {
-        res.status(400);
-        return next(new Error('Proof of address document is required for relocation'));
-      }
+      // proofOfAddress is optional for relocation
 
-      // Conditional validation: nearest SLT numbers required for FTTH/Megaline
+      // Conditional validation: nearest SLT number required for FTTH/Megaline
       const selectedServiceType = (formData?.serviceType || formData?.selectedServiceType || '').toString().toLowerCase();
       if (['ftth', 'megaline'].includes(selectedServiceType)) {
         const s1 = formData?.sltNumber1 || formData?.nearestSlt1;
-        const s2 = formData?.sltNumber2 || formData?.nearestSlt2;
         const validPhone = (v) => typeof v === 'string' && /^\d{10}$/.test(v.replace(/\D/g, ''));
-        if (!validPhone(s1) || !validPhone(s2)) {
+        if (!validPhone(s1)) {
           res.status(400);
-          return next(new Error('Two nearest SLT telephone numbers are required for FTTH/Megaline services and must be 10 digits'));
+          return next(new Error('A nearest SLT telephone number is required for FTTH/Megaline services and must be 10 digits'));
         }
       }
     }

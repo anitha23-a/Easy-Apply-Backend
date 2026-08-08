@@ -35,6 +35,7 @@ const uploadFields = upload.fields([
   { name: 'sketchFile', maxCount: 1 },
   { name: 'authorizationLetter', maxCount: 1 },
   { name: 'brcFile', maxCount: 1 },
+  { name: 'signatureFile', maxCount: 1 },
   { name: 'nicFront', maxCount: 1 },
   { name: 'nicBack', maxCount: 1 },
 ]);
